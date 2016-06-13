@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>NearPrompt Teleprompter</title>
+    <link rel="stylesheet" href="css/photon.min.css" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body>
+    <div class="window">
+      <header class="toolbar toolbar-header">
+	<h1 class="title">NearPrompt Teleprompter</h1>
+	<div class="toolbar-actions">
+	  <div class="btn-group">
+	    <button class="btn btn-default" id="size-plus">
+	      <span class="icon icon-plus"></span>
+	    </button>
+	    <button class="btn btn-default" id="size-minus">
+	      <span class="icon icon-minus"></span>
+	    </button>
+	  </div>
+	  <button class="btn btn-default" id="invert-color">
+	    <span class="icon icon-palette"></span>
+	  </button>
+
+	  <button class="btn btn-default btn-dropdown" style="display:none;">
+	    <span id="current-font">Font</span>
+	  </button>
+
+	  <button class="btn btn-default pull-right" id="start">
+	    <span class="icon icon-resize-full"></span>
+	  </button>
+	</div>
+      </header>
+      <div class="window-content">
+	<div id="content" contenteditable="">Replace this content...</div>
+	<div id="warning" class="message"></div>
+      </div>
+    </div>
+  </body>
+
+  <script>window.$ = window.jQuery = require('jquery');</script>
+  <script>
+    // You can also require other files to run in this process
+    require('./js/plugins.js')
+    require('./js/renderer.js')
+  </script>
+</html>
