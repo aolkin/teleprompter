@@ -3,10 +3,18 @@ header {
 }
 
 #content {
-    margin: 20% auto;
+    margin: 30% auto;
     width: 88%;
     white-space: pre-wrap;
     cursor: inherit;
+    line-height: initial;
+    text-align: justify;
+}
+
+#content * {
+    font-family: inherit;
+    overflow: inherit;
+    white-space: pre-wrap;
 }
 
 #content a {
@@ -16,6 +24,10 @@ header {
 /*:-webkit-full-screen .toolbar {
     display: none;
 }*/
+
+:-webkit-full-screen #content-container {
+    overflow-y: hidden;
+}
 
 .window-content {
     width: 100%;

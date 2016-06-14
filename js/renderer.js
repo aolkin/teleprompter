@@ -18,6 +18,7 @@ var fonts = [
 ];
 
 const {BrowserWindow} = require('electron').remote;
+const {ipcRenderer} = require('electron');
 
 function Prompter(fresh) {
 
@@ -91,11 +92,11 @@ function Prompter(fresh) {
     $("#underline").click( function(e){
 	resetApplier.applyToSelection();
 	underlineApplier.toggleSelection();
-    });
+    });*/
 
     function clearFormatting() {
 	$("#content [style]").removeAttr("style"); }
-    setInterval(clearFormatting,400);*/
+    setInterval(clearFormatting,400);
 
     function loadAutosave(e) {
 	var prompter = $(this).parents("tbody").data("prompter");
@@ -251,7 +252,7 @@ Prompter.prototype = {
     scrollText: function() {
 	if (this.isScrolling && this.playing && Math.abs(this.doScroll) > 1000 ) {
 	    this.abs = Math.abs(this.speed);
-	    this.el.parent().get(0).scrollTop += ( (this.speed<0)?-1:1) * (this.abs>10 ? this.abs%10:1);
+	    $("#content-container").get(0).scrollTop += ( (this.speed<0)?-1:1) * (this.abs>10 ? this.abs%10:1);
 	    this.doScroll = 0;
 	} else {
 	    this.doScroll += this.speed*this.speed*this.speed;
@@ -274,8 +275,21 @@ let p;
 
 $(function(){
 
-    p = new Prompter(!localStorage.prompter);
+    p = new Prompter(true);
     module.exports.p = p;
     module.exports.Prompter = Prompter;
     
+});
+
+ipcRenderer.on('fileopen', (event, message) => {
+    p.init(message);
+});
+
+ipcRenderer.on('updatename', (event, message) => {
+    $(".title").text(message.split("/").slice(-1) +
+		     " - NearPrompt Teleprompter");
+});
+
+ipcRenderer.on('filesave', (event) => {
+    ipcRenderer.send("filesave", p.save());
 });
