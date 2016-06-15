@@ -8,13 +8,13 @@ header {
     white-space: pre-wrap;
     cursor: inherit;
     line-height: initial;
-    text-align: justify;
 }
 
 #content * {
     font-family: inherit;
     overflow: inherit;
     white-space: pre-wrap;
+    margin: 0;
 }
 
 #content a {
