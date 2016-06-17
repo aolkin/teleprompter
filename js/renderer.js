@@ -126,6 +126,7 @@ Prompter.prototype = {
 	this.setColor();
 	this.changeFontSize();
 	this.changeFont();
+	setClean();
     },
     autosave: function() {
 	var autosaves;
@@ -159,11 +160,13 @@ Prompter.prototype = {
 	this.el.css("color",this.invert?"white":"black");
 	this.root.css("background-color",this.invert?"black":"white");
 	this.save();
+	setDirty();
     },
     changeFontSize: function(sign,e) {
 	this.el.css("fontSize",sign?sign+"=4":this.fontSize);
 	this.fontSize = this.el.css("fontSize");
 	this.save();
+	setDirty();
     },
     changeFont: function(e) {
 	if (!e) {
@@ -171,6 +174,7 @@ Prompter.prototype = {
 	this.el.css("fontFamily",$("#font").val())
 	this.font = $("#font").val();
 	this.save();
+	setDirty();
     },
 
     checkSpeed: function() {
@@ -209,7 +213,12 @@ Prompter.prototype = {
 	    return false;
 	}
 	if (document.activeElement == $("#content").get(0)) {
-	    return true; }
+	    if (this.text != this.el.html()) {
+		setDirty();
+		this.save();
+	    }
+	    return true;
+	}
 	if (e.which == 39) { e.which = 40; }
 	if (e.which == 37) { e.which = 38; }
 	if (e.which == 38 || e.which == 40) {
@@ -263,7 +272,7 @@ Prompter.prototype = {
 	fontSize: "64px",
 	font: fonts[0],
 	invert: false,
-	text: "Type or paste your script here..."
+	text: ""
     },
     doScroll: 0,
     speed: 8,
@@ -279,14 +288,28 @@ $(function(){
     module.exports.p = p;
     module.exports.Prompter = Prompter;
     
+    $(".window-content").scrollTop(200);
+    $("#content").focus();
+    
 });
+
+function setDirty() {
+    ipcRenderer.send("setdirty");
+}
+
+function setClean() {
+    ipcRenderer.send("setclean");
+}
 
 ipcRenderer.on('fileopen', (event, message) => {
     p.init(message);
 });
 
+let fn = "Untitled";
+
 ipcRenderer.on('updatename', (event, message) => {
-    $(".title").text(message.split("/").slice(-1) +
+    fn = message.split("/").slice(-1);
+    $(".title").text(fn +
 		     " - NearPrompt Teleprompter");
 });
 

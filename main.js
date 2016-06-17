@@ -10,13 +10,14 @@ const {Menu, MenuItem, ipcMain} = electron;
 
 const fs = require("fs");
 const striptags = require("striptags");
+const path = require('path');
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let windows = [];
 let powerSaveBlock
 
-function createWindow (e, path) {
+function createWindow (e, pathname) {
     // Create the browser window.
     let mainWindow = new BrowserWindow({
 	width: 800,
@@ -36,6 +37,31 @@ function createWindow (e, path) {
   // Open the DevTools.
   //mainWindow.webContents.openDevTools()
 
+  mainWindow.on('close', function (e) {
+      if (mainWindow.dirty) {
+	  var choice = dialog.showMessageBox(
+	      mainWindow,
+	      {
+		  type: 'question',
+		  buttons: ["Save", "Cancel", "Don't Save"],
+		  title: 'Do you want to save your changes?',
+		  message: 'Do you want to save your changes? If you quit ' +
+		      'without saving, your changes to "' +
+		      (mainWindow.filename.split &&
+		       mainWindow.filename.split("/").slice(-1)) +
+		      '" will be lost.'
+	      });
+	  
+	  if (choice === 1) {
+	      e.preventDefault();
+	  } else if (choice === 0) {
+	      if (!save({label:"Save"})) {
+		  e.preventDefault();
+	      }
+	  }
+      }
+  });
+
   // Emitted when the window is closed.
   mainWindow.on('closed', function (e) {
     // Dereference the window object, usually you would store windows
@@ -48,11 +74,11 @@ function createWindow (e, path) {
       powerSaveBlock = powerSaveBlocker.start("prevent-display-sleep");
   }
 		     
-  if (path && typeof path == "string") {
-      app.addRecentDocument(path);
-      fs.openSync(path, "r");
-      var p, data = fs.readFileSync(path);
-      if (path.endsWith("nps")) {
+  if (pathname && typeof pathname == "string") {
+      app.addRecentDocument(pathname);
+      fs.openSync(pathname, "r");
+      var p, data = fs.readFileSync(pathname);
+      if (pathname.endsWith("nps")) {
 	  p = JSON.parse(data);
       } else {
 	  p =  {
@@ -63,19 +89,23 @@ function createWindow (e, path) {
 	  }
       }
       mainWindow.webContents.on("did-finish-load", function() {
+	  mainWindow.webContents.send("updatename", pathname);
 	  mainWindow.webContents.send("fileopen", p);
       });
-      mainWindow.filename = path;
   }
+  mainWindow.filename = typeof(pathname) == "string"?pathname:"Untitled";
+  mainWindow.dirty = false;
 }
 
 function openFile(e) {
+    var def = (BrowserWindow.getFocusedWindow() && BrowserWindow.getFocusedWindow().filename != "Untitled") || app.getPath("documents");
     paths = dialog.showOpenDialog({
 	filters: [
 	    {name: "All Supported Files", extensions: ["nps", "txt", "html"]},
 	    {name: "NearPrompt Scripts", extensions: ["nps"]},
 	    {name: "Text Files", extensions: ["txt", "html"]},
 	],
+	defaultPath: def,
 	properties: ["openFile"]
     });
     if (paths && paths.length) {
@@ -85,13 +115,16 @@ function openFile(e) {
 
 function save(item) {
     var currentWindow = BrowserWindow.getFocusedWindow();
-    if (item.label == "Save As" || !currentWindow.filename || !currentWindow.filename.endsWith(".nps")) {
-	var def = "Untitled";
-	if (currentWindow.filename) {
+    if (!currentWindow) {
+	return false;
+    }
+    if ((item && item.label == "Save As") || !currentWindow.filename || !currentWindow.filename.endsWith(".nps")) {
+	var def = path.join(app.getPath("documents"),"Untitled.nps");
+	if (currentWindow.filename && currentWindow.filename != "Untitled") {
 	    def = currentWindow.filename.slice(0, currentWindow.filename.lastIndexOf("."));
 	    def += ".nps";
 	}
-	path = dialog.showSaveDialog(currentWindow,{
+	var pathname = dialog.showSaveDialog(currentWindow,{
 	    filters: [
 		{name: "All Supported Files",
 		 extensions: ["nps", "txt", "html"]},
@@ -101,14 +134,16 @@ function save(item) {
 	    ],
 	    defaultPath: def
 	});
-	if (path) {
-	    currentWindow.filename = path;
-	    currentWindow.webContents.send("updatename", path);
+	if (pathname) {
+	    currentWindow.filename = pathname;
+	    currentWindow.webContents.send("updatename", pathname);
 	} else {
 	    return false;
 	}
     }
     currentWindow.webContents.send("filesave",true);
+    currentWindow.dirty = false;
+    return true;
 }
     
 const template = [
@@ -269,12 +304,16 @@ if (process.platform === 'darwin') {
 
 menu = Menu.buildFromTemplate(template);
 
+let readyOpen = null;
+let isReady = false;
+    
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', function(e) {
+    isReady = true;
     Menu.setApplicationMenu(menu);
-    createWindow(e);
+    createWindow(e, readyOpen);
     
     ipcMain.on("filesave", function(event, data) {
 	var filename = BrowserWindow.getFocusedWindow().filename;
@@ -287,6 +326,13 @@ app.on('ready', function(e) {
 	    var text = JSON.parse(data).text;
 	    fs.writeFileSync(filename, text, "utf-8");
 	}
+    });
+    
+    ipcMain.on("setdirty", function() {
+      BrowserWindow.getFocusedWindow().dirty = true;
+    });
+    ipcMain.on("setclean", function() {
+      BrowserWindow.getFocusedWindow().dirty = false;
     });
 })
 
@@ -308,7 +354,10 @@ app.on('activate', function (e) {
   }
 })
     
-app.on('open-file', createWindow);
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
+app.on('open-file', function(e, path) {
+    if (isReady) {
+	createWindow(e, path);
+    } else {
+	readyOpen = path;
+    }
+});
